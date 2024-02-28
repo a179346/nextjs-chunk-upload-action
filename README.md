@@ -94,7 +94,7 @@ export function UploadForm() {
 
 "use server";
 
-import { createWriteStream } from "fs";
+import { FileHandle, open } from "fs/promises";
 import { join } from "path";
 
 export async function chunkUploadAction(
@@ -103,24 +103,15 @@ export async function chunkUploadAction(
   metadata: { name: string }
 ) {
   const buffer = Buffer.from(base64Chunk, "base64");
-  const path = join("./uploads", metadata.name);
+  const filePath = join("./uploads", metadata.name);
 
-  const writeable = createWriteStream(
-    path,
-    offset === 0
-      ? { flags: "w" }
-      : {
-          flags: "r+",
-          start: offset,
-        }
-  );
-
-  return new Promise<void>((resolve, reject) => {
-    writeable.on("finish", () => resolve());
-    writeable.on("error", reject);
-    writeable.write(buffer);
-    writeable.end();
-  });
+  let fileHandle: FileHandle | null = null;
+  try {
+    fileHandle = await open(filePath, offset === 0 ? "w" : "r+");
+    await fileHandle.write(buffer, 0, buffer.length, offset);
+  } finally {
+    await fileHandle?.close();
+  }
 }
 ```
 
