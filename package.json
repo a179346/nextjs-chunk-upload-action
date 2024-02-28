@@ -1,0 +1,55 @@
+{
+  "name": "nextjs-chunk-upload-action",
+  "version": "1.0.0",
+  "description": "Uploading large files with chunking using server action in Next.js",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint ./src"
+  },
+  "author": "a179346",
+  "license": "MIT",
+  "homepage": "https://github.com/a179346/nextjs-chunk-upload-action",
+  "devDependencies": {
+    "@types/node": "^20.11.21",
+    "@types/prettier": "^3.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.1.0",
+    "@typescript-eslint/parser": "^7.1.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "prettier": "^3.2.5",
+    "typescript": "^5.3.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/a179346/nextjs-chunk-upload-action.git"
+  },
+  "bugs": {
+    "url": "https://github.com/a179346/nextjs-chunk-upload-action/issues"
+  },
+  "files": [
+    "dist/blob-to-base64.d.ts",
+    "dist/blob-to-base64.js",
+    "dist/blob-to-base64.js.map",
+    "dist/index.d.ts",
+    "dist/index.js",
+    "dist/index.js.map",
+    "LICENSE",
+    "README.md"
+  ],
+  "keywords": [
+    "file upload",
+    "chunk",
+    "chunked",
+    "uploading",
+    "upload",
+    "server-actions",
+    "next",
+    "next.js",
+    "nextjs",
+    "node",
+    "typescript",
+    "ts"
+  ]
+}

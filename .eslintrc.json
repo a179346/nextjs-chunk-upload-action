@@ -1,0 +1,17 @@
+{
+    "parser": "@typescript-eslint/parser",
+    "extends": ["plugin:@typescript-eslint/recommended", "plugin:prettier/recommended", "prettier"],
+    "env": {
+        "es6": true,
+        "browser": true
+    },
+    "rules": {
+        "no-console": "error",
+        "prettier/prettier": [
+          "error",
+          {
+            "endOfLine": "auto"
+          }
+        ]
+    }
+}
