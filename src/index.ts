@@ -25,7 +25,7 @@ export interface ChunkUploaderOptions<TMetadata extends Metadata> {
     onChunkUpload: ChunkUploadHandler<TMetadata>;
     metadata: TMetadata;
     /**
-     * The number of bytes to send in each chunk. Defaults to 512KB.
+     * The number of bytes to send in each chunk. Defaults to 5MB.
      */
     chunkBytes?: number;
     /**
@@ -51,7 +51,7 @@ export class ChunkUploader<TMetadata extends Metadata> {
 
         this._file = options.file;
         this._onChunkUpload = options.onChunkUpload;
-        this._chunkBytes = options.chunkBytes || 1024 * 512;
+        this._chunkBytes = options.chunkBytes || 1024 * 1024 * 5;
         this._metadata = options.metadata;
         this._retryDelays = options.retryDelays || [1000, 2000, 4000, 8000];
         this._onChunkComplete = options.onChunkComplete;
