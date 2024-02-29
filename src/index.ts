@@ -2,15 +2,21 @@
  * Uploading large files with chunking using server action in Next.js
  */
 
-export type Metadata = Record<string, string | number | boolean | undefined | null>;
+type Primitive = string | boolean | number | undefined | null;
+
+export type Metadata = Record<string, Primitive> | Primitive;
 
 export interface ChunkFormData {
     get(name: 'blob'): Blob;
+    get(name: 'offset'): `${number}`;
+    get(name: 'length'): `${number}`;
+    get(name: 'retry'): `${number}`;
+    get(name: 'total'): `${number}`;
+    get(name: 'isLastChunk'): 'true' | 'false';
 }
 
-export type ChunkUploadHandler<TMetadata extends Metadata> = (
+export type ChunkUploadHandler<TMetadata extends Metadata = undefined> = (
     chunkFormData: ChunkFormData,
-    offset: number,
     metadata: TMetadata
 ) => Promise<void>;
 
@@ -53,9 +59,9 @@ export class ChunkUploader<TMetadata extends Metadata> {
         this._onSuccess = options.onSuccess;
     }
 
-    /**
+    /**********
      * Public
-     */
+     **********/
     public get status() {
         return this._status;
     }
@@ -66,9 +72,9 @@ export class ChunkUploader<TMetadata extends Metadata> {
         this._uploadChunk(0, 0);
     }
 
-    /**
+    /**********
      * Protected
-     */
+     **********/
     protected _status: ChunkUploaderStatus;
 
     protected readonly _file: File;
@@ -87,8 +93,14 @@ export class ChunkUploader<TMetadata extends Metadata> {
 
         const blob = this._file.slice(offset, to);
         const chunkFormData = new FormData();
-        chunkFormData.append('blob', blob);
-        this._onChunkUpload(chunkFormData as ChunkFormData, offset, this._metadata)
+        chunkFormData.set('blob', blob);
+        chunkFormData.set('offset', offset.toString());
+        chunkFormData.set('length', blob.size.toString());
+        chunkFormData.set('retry', currentChunkRetry.toString());
+        chunkFormData.set('total', this._file.size.toString());
+        chunkFormData.set('isLastChunk', isLastChunk ? 'true' : 'false');
+
+        this._onChunkUpload(chunkFormData as ChunkFormData, this._metadata)
             .then(() => {
                 if (this._onChunkComplete) this._onChunkComplete(to, this._file.size);
                 if (isLastChunk) {

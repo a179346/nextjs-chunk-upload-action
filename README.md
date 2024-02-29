@@ -100,10 +100,10 @@ import { ChunkUploadHandler } from "nextjs-chunk-upload-action";
 
 export const chunkUploadAction: ChunkUploadHandler<{ name: string }> = async (
   chunkFormData,
-  offset,
   metadata
 ) => {
   const blob = chunkFormData.get("blob");
+  const offset = Number(chunkFormData.get("offset"));
   const buffer = Buffer.from(await blob.arrayBuffer());
   const filePath = join("./uploads", metadata.name);
 
