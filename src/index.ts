@@ -1,15 +1,15 @@
-import { blobToBase64 } from './blob-to-base64';
-
 /**
  * Uploading large files with chunking using server action in Next.js
  */
 
-export type Metadata = {
-    [key: string]: string | number | boolean | undefined | null;
-};
+export type Metadata = Record<string, string | number | boolean | undefined | null>;
+
+export interface ChunkFormData {
+    get(name: 'blob'): Blob;
+}
 
 export type ChunkUploadHandler<TMetadata extends Metadata> = (
-    base64Chunk: string,
+    chunkFormData: ChunkFormData,
     offset: number,
     metadata: TMetadata
 ) => Promise<void>;
@@ -86,29 +86,28 @@ export class ChunkUploader<TMetadata extends Metadata> {
         const to = isLastChunk ? this._file.size : offset + this._chunkBytes;
 
         const blob = this._file.slice(offset, to);
-        blobToBase64(blob, data => {
-            const bass64Chunk = data.toString().split(',')[1];
-            this._onChunkUpload(bass64Chunk, offset, this._metadata)
-                .then(() => {
-                    if (this._onChunkComplete) this._onChunkComplete(to, this._file.size);
-                    if (isLastChunk) {
-                        this._status = 'complete';
-                        if (this._onSuccess) this._onSuccess();
-                    } else {
-                        this._uploadChunk(to, 0);
-                    }
-                })
-                .catch(error => {
-                    if (currentChunkRetry < this._retryDelays.length) {
-                        setTimeout(() => {
-                            this._uploadChunk(offset, currentChunkRetry + 1);
-                        }, this._retryDelays[currentChunkRetry]);
-                        return;
-                    }
-                    this._status = 'error';
-                    if (this._onError) this._onError(error);
-                });
-        });
+        const chunkFormData = new FormData();
+        chunkFormData.append('blob', blob);
+        this._onChunkUpload(chunkFormData as ChunkFormData, offset, this._metadata)
+            .then(() => {
+                if (this._onChunkComplete) this._onChunkComplete(to, this._file.size);
+                if (isLastChunk) {
+                    this._status = 'complete';
+                    if (this._onSuccess) this._onSuccess();
+                } else {
+                    this._uploadChunk(to, 0);
+                }
+            })
+            .catch(error => {
+                if (currentChunkRetry < this._retryDelays.length) {
+                    setTimeout(() => {
+                        this._uploadChunk(offset, currentChunkRetry + 1);
+                    }, this._retryDelays[currentChunkRetry]);
+                    return;
+                }
+                this._status = 'error';
+                if (this._onError) this._onError(error);
+            });
     }
 
     protected _validateOptions(options: ChunkUploaderOptions<TMetadata>) {
