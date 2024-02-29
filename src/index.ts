@@ -38,18 +38,6 @@ export interface ChunkUploaderOptions<TMetadata extends Metadata> {
 export type ChunkUploaderStatus = 'pending' | 'uploading' | 'complete' | 'error';
 
 export class ChunkUploader<TMetadata extends Metadata> {
-    protected _status: ChunkUploaderStatus;
-
-    protected readonly _file: File;
-    protected readonly _onChunkUpload: ChunkUploadHandler<TMetadata>;
-    protected readonly _chunkBytes: number;
-    protected readonly _metadata: TMetadata;
-    protected readonly _retryDelays: number[];
-
-    protected readonly _onChunkComplete?: (bytesAccepted: number, bytesTotal: number) => void;
-    protected readonly _onError?: (error: unknown) => void;
-    protected readonly _onSuccess?: () => void;
-
     constructor(options: ChunkUploaderOptions<TMetadata>) {
         this._status = 'pending';
 
@@ -65,6 +53,9 @@ export class ChunkUploader<TMetadata extends Metadata> {
         this._onSuccess = options.onSuccess;
     }
 
+    /**
+     * Public
+     */
     public get status() {
         return this._status;
     }
@@ -74,6 +65,21 @@ export class ChunkUploader<TMetadata extends Metadata> {
         this._status = 'uploading';
         this._uploadChunk(0, 0);
     }
+
+    /**
+     * Protected
+     */
+    protected _status: ChunkUploaderStatus;
+
+    protected readonly _file: File;
+    protected readonly _onChunkUpload: ChunkUploadHandler<TMetadata>;
+    protected readonly _chunkBytes: number;
+    protected readonly _metadata: TMetadata;
+    protected readonly _retryDelays: number[];
+
+    protected readonly _onChunkComplete?: (bytesAccepted: number, bytesTotal: number) => void;
+    protected readonly _onError?: (error: unknown) => void;
+    protected readonly _onSuccess?: () => void;
 
     protected _uploadChunk(offset: number, currentChunkRetry: number) {
         const isLastChunk = offset + this._chunkBytes >= this._file.size;
