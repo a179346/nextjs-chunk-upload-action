@@ -62,14 +62,18 @@ export class ChunkUploader<TMetadata extends Metadata> {
     /**********
      * Public
      **********/
-    public get status() {
-        return this._status;
-    }
-
+    /**
+     * Start the upload process.
+     * returns `false` if the upload process is already started.
+     */
     public start() {
-        if (this._status !== 'pending') throw new Error('Upload status is not pending');
+        if (this._status !== 'pending') return false;
         this._status = 'uploading';
         this._uploadChunk(0, 0);
+    }
+
+    public get status() {
+        return this._status;
     }
 
     /**********
