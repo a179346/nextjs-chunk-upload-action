@@ -39,6 +39,7 @@ export interface ChunkUploaderOptions<TMetadata extends Metadata> {
     onChunkComplete?: (bytesAccepted: number, bytesTotal: number) => void;
     onError?: (error: unknown) => void;
     onSuccess?: () => void;
+    onStatusChange?: (oldStatus: ChunkUploaderStatus, newStatus: ChunkUploaderStatus) => void;
 }
 
 export type ChunkUploaderStatus = 'pending' | 'uploading' | 'complete' | 'error';
@@ -57,6 +58,7 @@ export class ChunkUploader<TMetadata extends Metadata> {
         this._onChunkComplete = options.onChunkComplete;
         this._onError = options.onError;
         this._onSuccess = options.onSuccess;
+        this._onStatusChange = options.onStatusChange;
     }
 
     /**********
@@ -67,8 +69,8 @@ export class ChunkUploader<TMetadata extends Metadata> {
      * returns `false` if the upload process is already started.
      */
     public start() {
-        if (this._status !== 'pending') return false;
-        this._status = 'uploading';
+        if (this.status !== 'pending') return false;
+        this.status = 'uploading';
         this._uploadChunk(0, 0);
     }
 
@@ -80,6 +82,12 @@ export class ChunkUploader<TMetadata extends Metadata> {
      * Protected
      **********/
     protected _status: ChunkUploaderStatus;
+    protected set status(value: ChunkUploaderStatus) {
+        const oldValue = this._status;
+        if (oldValue === value) return;
+        this._status = value;
+        if (this._onStatusChange) this._onStatusChange(oldValue, value);
+    }
 
     protected readonly _file: File;
     protected readonly _onChunkUpload: ChunkUploadHandler<TMetadata>;
@@ -90,6 +98,10 @@ export class ChunkUploader<TMetadata extends Metadata> {
     protected readonly _onChunkComplete?: (bytesAccepted: number, bytesTotal: number) => void;
     protected readonly _onError?: (error: unknown) => void;
     protected readonly _onSuccess?: () => void;
+    protected readonly _onStatusChange?: (
+        oldStatus: ChunkUploaderStatus,
+        newStatus: ChunkUploaderStatus
+    ) => void;
 
     protected _uploadChunk(offset: number, currentChunkRetry: number) {
         const isLastChunk = offset + this._chunkBytes >= this._file.size;
@@ -108,7 +120,7 @@ export class ChunkUploader<TMetadata extends Metadata> {
             .then(() => {
                 if (this._onChunkComplete) this._onChunkComplete(to, this._file.size);
                 if (isLastChunk) {
-                    this._status = 'complete';
+                    this.status = 'complete';
                     if (this._onSuccess) this._onSuccess();
                 } else {
                     this._uploadChunk(to, 0);
@@ -121,7 +133,7 @@ export class ChunkUploader<TMetadata extends Metadata> {
                     }, this._retryDelays[currentChunkRetry]);
                     return;
                 }
-                this._status = 'error';
+                this.status = 'error';
                 if (this._onError) this._onError(error);
             });
     }
@@ -164,6 +176,11 @@ export class ChunkUploader<TMetadata extends Metadata> {
         if (options.onSuccess !== undefined) {
             if (typeof options.onSuccess !== 'function')
                 throw new Error('onSuccess must be a function');
+        }
+
+        if (options.onStatusChange !== undefined) {
+            if (typeof options.onStatusChange !== 'function')
+                throw new Error('onStatusChange must be a function');
         }
     }
 }
