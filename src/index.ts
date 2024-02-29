@@ -15,7 +15,7 @@ export interface ChunkFormData {
     get(name: 'isLastChunk'): 'true' | 'false';
 }
 
-export type ChunkUploadHandler<TMetadata extends Metadata = undefined> = (
+export type ChunkUploadHandler<TMetadata extends Metadata = Metadata> = (
     chunkFormData: ChunkFormData,
     metadata: TMetadata
 ) => Promise<void>;
