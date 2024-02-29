@@ -24,7 +24,7 @@
 
  ## 🔗 Link
 + [Github](https://github.com/a179346/nextjs-chunk-upload-action#readme)
-+ [npm](https://github.com/a179346/nextjs-chunk-upload-action)
++ [npm](https://www.npmjs.com/package/nextjs-chunk-upload-action)
 
 ## 📥 Install
 
