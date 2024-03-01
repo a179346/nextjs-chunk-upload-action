@@ -2,7 +2,7 @@
  * Uploading large files with chunking using server action in Next.js
  */
 
-type Primitive = string | boolean | number | undefined | null;
+export type Primitive = string | boolean | number | undefined | null;
 
 export type Metadata = Record<string, Primitive> | Primitive;
 
@@ -72,7 +72,7 @@ export class ChunkUploader<TMetadata extends Metadata> {
   public start() {
     if (this.status !== 'pending') return false;
     this.status = 'uploading';
-    this._uploadNextChunk(0);
+    this._startUploadFromCurrentPosition().catch(() => {});
   }
 
   public get status() {
@@ -94,8 +94,8 @@ export class ChunkUploader<TMetadata extends Metadata> {
   protected readonly _file: File;
   protected readonly _onChunkUpload: ChunkUploadHandler<TMetadata>;
   protected readonly _chunkBytes: number;
-  protected readonly _metadata: TMetadata;
-  protected readonly _retryDelays: number[];
+  protected readonly _metadata: Readonly<TMetadata>;
+  protected readonly _retryDelays: readonly number[];
 
   protected readonly _onChunkComplete?: (bytesAccepted: number, bytesTotal: number) => void;
   protected readonly _onError?: (error: unknown) => void;
@@ -105,41 +105,48 @@ export class ChunkUploader<TMetadata extends Metadata> {
     newStatus: ChunkUploaderStatus
   ) => void;
 
-  protected _uploadNextChunk(currentChunkRetry: number) {
+  protected async _startUploadFromCurrentPosition() {
+    let isLastChunkUploaded = false;
+    while (!isLastChunkUploaded) {
+      isLastChunkUploaded = await this._uploadNextChunk();
+    }
+  }
+
+  protected async _uploadNextChunk() {
     const isLastChunk = this._position + this._chunkBytes >= this._file.size;
     const endPosition = isLastChunk ? this._file.size : this._position + this._chunkBytes;
 
     const blob = this._file.slice(this._position, endPosition);
-    const chunkFormData = new FormData();
-    chunkFormData.set('blob', blob);
-    chunkFormData.set('offset', this._position.toString());
-    chunkFormData.set('length', blob.size.toString());
-    chunkFormData.set('retry', currentChunkRetry.toString());
-    chunkFormData.set('total', this._file.size.toString());
-    chunkFormData.set('isLastChunk', isLastChunk ? 'true' : 'false');
 
-    this._onChunkUpload(chunkFormData as ChunkFormData, this._metadata)
-      .then(() => {
-        this._position = endPosition;
-        if (this._onChunkComplete) this._onChunkComplete(endPosition, this._file.size);
-        if (isLastChunk) {
-          this.status = 'complete';
-          if (this._onSuccess) this._onSuccess();
-        } else {
-          this._uploadNextChunk(0);
+    for (let retry = 0; retry <= this._retryDelays.length; retry += 1) {
+      try {
+        const chunkFormData = new FormData();
+        chunkFormData.set('blob', blob);
+        chunkFormData.set('offset', this._position.toString());
+        chunkFormData.set('length', blob.size.toString());
+        chunkFormData.set('retry', retry.toString());
+        chunkFormData.set('total', this._file.size.toString());
+        chunkFormData.set('isLastChunk', isLastChunk ? 'true' : 'false');
+
+        await this._onChunkUpload(chunkFormData as ChunkFormData, this._metadata);
+        break;
+      } catch (error) {
+        if (retry < this._retryDelays.length) await wait(this._retryDelays[retry]);
+        else {
+          this.status = 'error';
+          if (this._onError) this._onError(error);
+          throw error;
         }
-        return;
-      })
-      .catch(error => {
-        if (currentChunkRetry < this._retryDelays.length) {
-          setTimeout(() => {
-            this._uploadNextChunk(currentChunkRetry + 1);
-          }, this._retryDelays[currentChunkRetry]);
-          return;
-        }
-        this.status = 'error';
-        if (this._onError) this._onError(error);
-      });
+      }
+    }
+
+    this._position = endPosition;
+    if (isLastChunk) this.status = 'complete';
+
+    if (this._onChunkComplete) this._onChunkComplete(endPosition, this._file.size);
+    if (isLastChunk && this._onSuccess) this._onSuccess();
+
+    return isLastChunk;
   }
 
   protected _validateOptions(options: ChunkUploaderOptions<TMetadata>) {
@@ -182,4 +189,8 @@ export class ChunkUploader<TMetadata extends Metadata> {
         throw new Error('onStatusChange must be a function');
     }
   }
+}
+
+function wait(ms: number) {
+  return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
