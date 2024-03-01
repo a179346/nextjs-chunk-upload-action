@@ -62,12 +62,14 @@ export class ChunkUploader<TMetadata extends Metadata> {
     this._onStatusChange = options.onStatusChange;
   }
 
-  /**********
+  /*************
    * Public
-   **********/
+   *************/
   /**
    * Start the upload process.
    * returns `false` if the upload process is already started.
+   *
+   * status: `pending` -> `uploading` -> `complete` or `error`
    */
   public start() {
     if (this.status !== 'pending') return false;
@@ -79,9 +81,9 @@ export class ChunkUploader<TMetadata extends Metadata> {
     return this._status;
   }
 
-  /**********
+  /*************
    * Protected
-   **********/
+   *************/
   protected _status: ChunkUploaderStatus;
   protected set status(value: ChunkUploaderStatus) {
     const oldValue = this._status;
