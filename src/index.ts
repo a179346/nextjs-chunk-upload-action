@@ -47,6 +47,7 @@ export type ChunkUploaderStatus = 'pending' | 'uploading' | 'complete' | 'error'
 export class ChunkUploader<TMetadata extends Metadata> {
   constructor(options: ChunkUploaderOptions<TMetadata>) {
     this._status = 'pending';
+    this._position = 0;
 
     this._validateOptions(options);
 
@@ -71,7 +72,7 @@ export class ChunkUploader<TMetadata extends Metadata> {
   public start() {
     if (this.status !== 'pending') return false;
     this.status = 'uploading';
-    this._uploadChunk(0, 0);
+    this._uploadNextChunk(0);
   }
 
   public get status() {
@@ -88,6 +89,7 @@ export class ChunkUploader<TMetadata extends Metadata> {
     this._status = value;
     if (this._onStatusChange) this._onStatusChange(oldValue, value);
   }
+  protected _position: number;
 
   protected readonly _file: File;
   protected readonly _onChunkUpload: ChunkUploadHandler<TMetadata>;
@@ -103,14 +105,14 @@ export class ChunkUploader<TMetadata extends Metadata> {
     newStatus: ChunkUploaderStatus
   ) => void;
 
-  protected _uploadChunk(offset: number, currentChunkRetry: number) {
-    const isLastChunk = offset + this._chunkBytes >= this._file.size;
-    const to = isLastChunk ? this._file.size : offset + this._chunkBytes;
+  protected _uploadNextChunk(currentChunkRetry: number) {
+    const isLastChunk = this._position + this._chunkBytes >= this._file.size;
+    const endPosition = isLastChunk ? this._file.size : this._position + this._chunkBytes;
 
-    const blob = this._file.slice(offset, to);
+    const blob = this._file.slice(this._position, endPosition);
     const chunkFormData = new FormData();
     chunkFormData.set('blob', blob);
-    chunkFormData.set('offset', offset.toString());
+    chunkFormData.set('offset', this._position.toString());
     chunkFormData.set('length', blob.size.toString());
     chunkFormData.set('retry', currentChunkRetry.toString());
     chunkFormData.set('total', this._file.size.toString());
@@ -118,19 +120,20 @@ export class ChunkUploader<TMetadata extends Metadata> {
 
     this._onChunkUpload(chunkFormData as ChunkFormData, this._metadata)
       .then(() => {
-        if (this._onChunkComplete) this._onChunkComplete(to, this._file.size);
+        this._position = endPosition;
+        if (this._onChunkComplete) this._onChunkComplete(endPosition, this._file.size);
         if (isLastChunk) {
           this.status = 'complete';
           if (this._onSuccess) this._onSuccess();
         } else {
-          this._uploadChunk(to, 0);
+          this._uploadNextChunk(0);
         }
         return;
       })
       .catch(error => {
         if (currentChunkRetry < this._retryDelays.length) {
           setTimeout(() => {
-            this._uploadChunk(offset, currentChunkRetry + 1);
+            this._uploadNextChunk(currentChunkRetry + 1);
           }, this._retryDelays[currentChunkRetry]);
           return;
         }
