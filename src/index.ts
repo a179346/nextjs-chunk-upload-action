@@ -125,6 +125,7 @@ export class ChunkUploader<TMetadata extends Metadata> {
         } else {
           this._uploadChunk(to, 0);
         }
+        return;
       })
       .catch(error => {
         if (currentChunkRetry < this._retryDelays.length) {
