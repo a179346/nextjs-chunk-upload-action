@@ -4,5 +4,5 @@
     "trailingComma": "es5",
     "arrowParens": "avoid",
     "printWidth": 100,
-    "tabWidth": 4
+    "tabWidth": 2
 }

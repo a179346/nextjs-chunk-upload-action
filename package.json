@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "lint": "eslint ./src"
+    "lint": "eslint ./src",
+    "prettier-post-build": "prettier --ignore-path .prettierignore --write ./dist/**/*.ts"
   },
   "author": "a179346",
   "license": "MIT",
