@@ -162,9 +162,9 @@ export class ChunkUploader<TMetadata extends Metadata> {
 
   /**
    * Abort the upload process.
-   * returns `false` if the status is not `paused`.
+   * returns `false` if the status is not `paused` or `error`.
    *
-   * status: `paused` -> `aborted`
+   * status: `paused` or `error` -> `aborted`
    */
   public abort() {
     if (!this.canAbort) return false;
@@ -173,7 +173,7 @@ export class ChunkUploader<TMetadata extends Metadata> {
     return true;
   }
   public get canAbort() {
-    return this.status === 'paused';
+    return this.status === 'paused' || this.status === 'error';
   }
 
   /*************
@@ -239,8 +239,10 @@ export class ChunkUploader<TMetadata extends Metadata> {
         break;
       } catch (error) {
         if (this.status === 'pausing') return false;
-        if (retry < this._retryDelays.length) await this._waitForRetry(this._retryDelays[retry]);
-        else {
+        if (retry < this._retryDelays.length) {
+          const isPausd = await this._waitForRetry(this._retryDelays[retry]);
+          if (isPausd) return false;
+        } else {
           this.status = 'error';
           this._error = error;
           if (this._onError) this._onError(error);
@@ -308,19 +310,28 @@ export class ChunkUploader<TMetadata extends Metadata> {
   }
 
   protected _waitForRetry(ms: number) {
-    return new Promise<void>(resolve => {
+    return new Promise<boolean>(resolve => {
       let isResolved = false;
 
-      const handleResolve = () => {
+      const handleTimeout = () => {
         if (isResolved) return;
         isResolved = true;
-        this._removeStatusChangedEventListener('pausing', handleResolve);
-        resolve();
+        this._removeStatusChangedEventListener('pausing', handlePause);
+        clearTimeout(timeoutId);
+        resolve(false);
       };
 
-      setTimeout(handleResolve, ms);
+      const handlePause = () => {
+        if (isResolved) return;
+        isResolved = true;
+        this._removeStatusChangedEventListener('pausing', handlePause);
+        clearTimeout(timeoutId);
+        resolve(true);
+      };
 
-      this._addStatusChangedEventListener('pausing', handleResolve);
+      const timeoutId = setTimeout(handleTimeout, ms);
+
+      this._addStatusChangedEventListener('pausing', handlePause);
     });
   }
 
