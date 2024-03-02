@@ -86,6 +86,7 @@ export class ChunkUploader<TMetadata extends Metadata> {
     this._onPaused = options.onPaused;
     this._onAborted = options.onAborted;
     this._onStatusChange = options.onStatusChange;
+    this._statusChangedEventListeners = {};
 
     if (this._onStatusChange) this._onStatusChange(undefined, this.status);
   }
@@ -182,6 +183,8 @@ export class ChunkUploader<TMetadata extends Metadata> {
     const oldValue = this._status;
     if (oldValue === value) return;
     this._status = value;
+    const listenerSet = this._statusChangedEventListeners[value];
+    if (listenerSet) listenerSet.forEach(listener => listener());
     if (this._onStatusChange) this._onStatusChange(oldValue, value);
   }
   protected _position: number;
@@ -238,7 +241,7 @@ export class ChunkUploader<TMetadata extends Metadata> {
         break;
       } catch (error) {
         if (this.status === 'pausing') return false;
-        if (retry < this._retryDelays.length) await wait(this._retryDelays[retry]);
+        if (retry < this._retryDelays.length) await this._waitForRetry(this._retryDelays[retry]);
         else {
           this.status = 'error';
           this._error = error;
@@ -307,8 +310,37 @@ export class ChunkUploader<TMetadata extends Metadata> {
         throw new Error('onStatusChange must be a function');
     }
   }
-}
 
-function wait(ms: number) {
-  return new Promise<void>(resolve => setTimeout(resolve, ms));
+  protected _waitForRetry(ms: number) {
+    return new Promise<void>(resolve => {
+      let isResolved = false;
+
+      const handleResolve = () => {
+        if (isResolved) return;
+        isResolved = true;
+        this._removeStatusChangedEventListener('pausing', handleResolve);
+        resolve();
+      };
+
+      setTimeout(handleResolve, ms);
+
+      this._addStatusChangedEventListener('pausing', handleResolve);
+    });
+  }
+
+  protected _statusChangedEventListeners: Partial<Record<ChunkUploaderStatus, Set<() => void>>>;
+
+  protected _addStatusChangedEventListener(status: ChunkUploaderStatus, listener: () => void) {
+    const listenerSet = this._statusChangedEventListeners[status] || new Set();
+    if (!this._statusChangedEventListeners[status])
+      this._statusChangedEventListeners[status] = listenerSet;
+    listenerSet.add(listener);
+  }
+
+  protected _removeStatusChangedEventListener(status: ChunkUploaderStatus, listener: () => void) {
+    const listenerSet = this._statusChangedEventListeners[status] || new Set();
+    if (!this._statusChangedEventListeners[status])
+      this._statusChangedEventListeners[status] = listenerSet;
+    listenerSet.delete(listener);
+  }
 }
