@@ -73,7 +73,6 @@ export class ChunkUploader<TMetadata extends Metadata> {
 
     this._status = 'pending';
     this._position = 0;
-    this._isUploadingLastChunk = false;
 
     this._file = options.file;
     this._onChunkUpload = options.onChunkUpload;
@@ -129,9 +128,11 @@ export class ChunkUploader<TMetadata extends Metadata> {
 
   /**
    * Pause the upload process.
-   * returns `false` if the status is not `uploading` or the last chunk is being uploaded.
+   * returns `false` if the status is not `uploading`.
    *
-   * status: `uploading` -> `pausing` -> `paused`
+   * Note that the status at the end could be `success` if the last chunk is being uploaded when the function is called.
+   *
+   * status: `uploading` -> `pausing` -> `paused` or `success`
    */
   public pause() {
     if (!this.canPause) return false;
@@ -139,7 +140,7 @@ export class ChunkUploader<TMetadata extends Metadata> {
     return true;
   }
   public get canPause() {
-    return this.status === 'uploading' && !this._isUploadingLastChunk;
+    return this.status === 'uploading';
   }
 
   /**
@@ -188,7 +189,6 @@ export class ChunkUploader<TMetadata extends Metadata> {
     if (this._onStatusChange) this._onStatusChange(oldValue, value);
   }
   protected _position: number;
-  protected _isUploadingLastChunk: boolean;
   protected _error?: unknown;
 
   protected readonly _file: File;
@@ -227,8 +227,6 @@ export class ChunkUploader<TMetadata extends Metadata> {
 
     for (let retry = 0; retry <= this._retryDelays.length; retry += 1) {
       try {
-        this._isUploadingLastChunk = isLastChunk;
-
         const chunkFormData = new FormData();
         chunkFormData.set('blob', blob);
         chunkFormData.set('offset', this._position.toString());
@@ -248,8 +246,6 @@ export class ChunkUploader<TMetadata extends Metadata> {
           if (this._onError) this._onError(error);
           throw error;
         }
-      } finally {
-        this._isUploadingLastChunk = false;
       }
     }
 
