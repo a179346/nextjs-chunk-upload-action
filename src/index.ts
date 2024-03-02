@@ -4,7 +4,7 @@
 
 export type Primitive = string | boolean | number | undefined | null;
 
-export type Metadata = Record<string, Primitive> | Primitive;
+export type Metadata = Record<string, Primitive>;
 
 export interface ChunkFormData {
   get(name: 'blob'): Blob;
@@ -51,7 +51,7 @@ export interface ChunkUploaderOptions<TMetadata extends Metadata> {
   onSuccess?: () => void;
   onError?: (error: unknown) => void;
   onPaused?: () => void;
-  onAborted?: () => void;
+  onAborted?: (metadata: TMetadata) => void;
   onStatusChange?: (
     oldStatus: ChunkUploaderStatus | undefined,
     newStatus: ChunkUploaderStatus
@@ -167,7 +167,7 @@ export class ChunkUploader<TMetadata extends Metadata> {
   public abort() {
     if (!this.canAbort) return false;
     this.status = 'aborted';
-    if (this._onAborted) this._onAborted();
+    if (this._onAborted) this._onAborted(this._metadata);
     return true;
   }
   public get canAbort() {
@@ -198,7 +198,7 @@ export class ChunkUploader<TMetadata extends Metadata> {
   protected readonly _onSuccess?: () => void;
   protected readonly _onError?: (error: unknown) => void;
   protected readonly _onPaused?: () => void;
-  protected readonly _onAborted?: () => void;
+  protected readonly _onAborted?: (metadata: TMetadata) => void;
   protected readonly _onStatusChange?: (
     oldStatus: ChunkUploaderStatus | undefined,
     newStatus: ChunkUploaderStatus
