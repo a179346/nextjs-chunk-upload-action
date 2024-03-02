@@ -105,6 +105,10 @@ export class ChunkUploader<TMetadata extends Metadata> {
     return this._error;
   }
 
+  public get file() {
+    return this._file;
+  }
+
   /**
    * Start the upload process.
    * returns `false` if the status is not `pending`.
@@ -112,11 +116,14 @@ export class ChunkUploader<TMetadata extends Metadata> {
    * status: `pending` -> `uploading` -> `complete` or `error`
    */
   public start() {
-    if (this.status !== 'pending') return false;
+    if (!this.canStart) return false;
     this.status = 'uploading';
     this._error = undefined;
     this._startUploadFromCurrentPosition().catch(() => {});
     return true;
+  }
+  public get canStart() {
+    return this.status === 'pending';
   }
 
   /**
@@ -126,9 +133,12 @@ export class ChunkUploader<TMetadata extends Metadata> {
    * status: `uploading` -> `pausing` -> `paused`
    */
   public pause() {
-    if (this.status !== 'uploading' || this._isUploadingLastChunk) return false;
+    if (!this.canPause) return false;
     this.status = 'pausing';
     return true;
+  }
+  public get canPause() {
+    return this.status === 'uploading' && !this._isUploadingLastChunk;
   }
 
   /**
@@ -138,11 +148,14 @@ export class ChunkUploader<TMetadata extends Metadata> {
    * status: `paused` or `error` -> `uploading` -> `complete` or `error`
    */
   public resume() {
-    if (this.status !== 'paused' && this.status !== 'error') return false;
+    if (!this.canResume) return false;
     this.status = 'uploading';
     this._error = undefined;
     this._startUploadFromCurrentPosition().catch(() => {});
     return true;
+  }
+  public get canResume() {
+    return this.status === 'paused' || this.status === 'error';
   }
 
   /**
@@ -152,10 +165,13 @@ export class ChunkUploader<TMetadata extends Metadata> {
    * status: `paused` -> `aborted`
    */
   public abort() {
-    if (this.status !== 'paused') return false;
+    if (!this.canAbort) return false;
     this.status = 'aborted';
     if (this._onAborted) this._onAborted();
     return true;
+  }
+  public get canAbort() {
+    return this.status === 'paused';
   }
 
   /*************
