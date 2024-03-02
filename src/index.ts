@@ -48,17 +48,27 @@ export interface ChunkUploaderOptions<TMetadata extends Metadata> {
    * A callback that is called when a chunk is uploaded.
    */
   onChunkComplete?: (bytesAccepted: number, bytesTotal: number) => void;
-  onError?: (error: unknown) => void;
   onSuccess?: () => void;
+  onError?: (error: unknown) => void;
+  onPaused?: () => void;
+  onAborted?: () => void;
   onStatusChange?: (oldStatus: ChunkUploaderStatus, newStatus: ChunkUploaderStatus) => void;
 }
 
-export type ChunkUploaderStatus = 'pending' | 'uploading' | 'complete' | 'error';
+export type ChunkUploaderStatus =
+  | 'pending'
+  | 'uploading'
+  | 'pausing'
+  | 'paused'
+  | 'aborted'
+  | 'complete'
+  | 'error';
 
 export class ChunkUploader<TMetadata extends Metadata> {
   constructor(options: ChunkUploaderOptions<TMetadata>) {
     this._status = 'pending';
     this._position = 0;
+    this._isUploadingLastChunk = false;
 
     this._validateOptions(options);
 
@@ -68,17 +78,27 @@ export class ChunkUploader<TMetadata extends Metadata> {
     this._metadata = options.metadata;
     this._retryDelays = options.retryDelays || [1000, 2000, 4000, 8000];
     this._onChunkComplete = options.onChunkComplete;
-    this._onError = options.onError;
     this._onSuccess = options.onSuccess;
+    this._onError = options.onError;
+    this._onPaused = options.onPaused;
+    this._onAborted = options.onAborted;
     this._onStatusChange = options.onStatusChange;
   }
 
   /*************
    * Public
    *************/
+  public get status() {
+    return this._status;
+  }
+
+  public get bytesUploaded() {
+    return this._position;
+  }
+
   /**
    * Start the upload process.
-   * returns `false` if the upload process is already started.
+   * returns `false` if the status is not `pending`.
    *
    * status: `pending` -> `uploading` -> `complete` or `error`
    */
@@ -86,14 +106,45 @@ export class ChunkUploader<TMetadata extends Metadata> {
     if (this.status !== 'pending') return false;
     this.status = 'uploading';
     this._startUploadFromCurrentPosition().catch(() => {});
+    return true;
   }
 
-  public get status() {
-    return this._status;
+  /**
+   * Pause the upload process.
+   * returns `false` if the status is not `uploading` or the last chunk is being uploaded.
+   *
+   * status: `uploading` -> `pausing` -> `paused`
+   */
+  public pause() {
+    if (this.status !== 'uploading' || this._isUploadingLastChunk) return false;
+    this.status = 'pausing';
+    return true;
   }
 
-  public get bytesUploaded() {
-    return this._position;
+  /**
+   * Resume the upload process.
+   * returns `false` if the status is not `paused` or `error`.
+   *
+   * status: `paused` or `error` -> `uploading` -> `complete` or `error`
+   */
+  public resume() {
+    if (this.status !== 'paused' && this.status !== 'error') return false;
+    this.status = 'uploading';
+    this._startUploadFromCurrentPosition().catch(() => {});
+    return true;
+  }
+
+  /**
+   * Abort the upload process.
+   * returns `false` if the status is not `paused`.
+   *
+   * status: `paused` -> `aborted`
+   */
+  public abort() {
+    if (this.status !== 'paused') return false;
+    this.status = 'aborted';
+    if (this._onAborted) this._onAborted();
+    return true;
   }
 
   /*************
@@ -107,6 +158,7 @@ export class ChunkUploader<TMetadata extends Metadata> {
     if (this._onStatusChange) this._onStatusChange(oldValue, value);
   }
   protected _position: number;
+  protected _isUploadingLastChunk: boolean;
 
   protected readonly _file: File;
   protected readonly _onChunkUpload: ChunkUploadHandler<TMetadata>;
@@ -115,8 +167,10 @@ export class ChunkUploader<TMetadata extends Metadata> {
   protected readonly _retryDelays: readonly number[];
 
   protected readonly _onChunkComplete?: (bytesAccepted: number, bytesTotal: number) => void;
-  protected readonly _onError?: (error: unknown) => void;
   protected readonly _onSuccess?: () => void;
+  protected readonly _onError?: (error: unknown) => void;
+  protected readonly _onPaused?: () => void;
+  protected readonly _onAborted?: () => void;
   protected readonly _onStatusChange?: (
     oldStatus: ChunkUploaderStatus,
     newStatus: ChunkUploaderStatus
@@ -126,6 +180,11 @@ export class ChunkUploader<TMetadata extends Metadata> {
     let isLastChunkUploaded = false;
     while (!isLastChunkUploaded) {
       isLastChunkUploaded = await this._uploadNextChunk();
+      if (this.status === 'pausing') {
+        this.status = 'paused';
+        if (this._onPaused) this._onPaused();
+        return;
+      }
     }
   }
 
@@ -137,6 +196,8 @@ export class ChunkUploader<TMetadata extends Metadata> {
 
     for (let retry = 0; retry <= this._retryDelays.length; retry += 1) {
       try {
+        this._isUploadingLastChunk = isLastChunk;
+
         const chunkFormData = new FormData();
         chunkFormData.set('blob', blob);
         chunkFormData.set('offset', this._position.toString());
@@ -148,12 +209,15 @@ export class ChunkUploader<TMetadata extends Metadata> {
         await this._onChunkUpload(chunkFormData as ChunkFormData, this._metadata);
         break;
       } catch (error) {
+        if (this.status === 'pausing') return false;
         if (retry < this._retryDelays.length) await wait(this._retryDelays[retry]);
         else {
           this.status = 'error';
           if (this._onError) this._onError(error);
           throw error;
         }
+      } finally {
+        this._isUploadingLastChunk = false;
       }
     }
 
@@ -193,12 +257,20 @@ export class ChunkUploader<TMetadata extends Metadata> {
         throw new Error('onChunkComplete must be a function');
     }
 
+    if (options.onSuccess !== undefined) {
+      if (typeof options.onSuccess !== 'function') throw new Error('onSuccess must be a function');
+    }
+
     if (options.onError !== undefined) {
       if (typeof options.onError !== 'function') throw new Error('onError must be a function');
     }
 
-    if (options.onSuccess !== undefined) {
-      if (typeof options.onSuccess !== 'function') throw new Error('onSuccess must be a function');
+    if (options.onPaused !== undefined) {
+      if (typeof options.onPaused !== 'function') throw new Error('onPaused must be a function');
+    }
+
+    if (options.onAborted !== undefined) {
+      if (typeof options.onAborted !== 'function') throw new Error('onAborted must be a function');
     }
 
     if (options.onStatusChange !== undefined) {
