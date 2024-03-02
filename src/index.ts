@@ -130,9 +130,9 @@ export class ChunkUploader<TMetadata extends Metadata> {
    * Pause the upload process.
    * returns `false` if the status is not `uploading`.
    *
-   * Note that the status at the end could be `success` if the last chunk is being uploaded when the function is called.
+   * Note that the status at the end could be `complete` if the last chunk is being uploaded when the function is called.
    *
-   * status: `uploading` -> `pausing` -> `paused` or `success`
+   * status: `uploading` -> `pausing` -> `paused` or `complete`
    */
   public pause() {
     if (!this.canPause) return false;
