@@ -22,15 +22,26 @@ export type ChunkUploadHandler<TMetadata extends Metadata = Metadata> = (
 
 export interface ChunkUploaderOptions<TMetadata extends Metadata> {
   file: File;
+  /**
+   * The function that define how the chunk is uploaded to the server.
+   */
   onChunkUpload: ChunkUploadHandler<TMetadata>;
+  /**
+   * The metadata to send with each chunk.
+   * This can be used to send additional information like the file name, file type, etc.
+   */
   metadata: TMetadata;
   /**
-   * The number of bytes to send in each chunk. Defaults to 5MB.
+   * The number of bytes to send in each chunk.
+   *
+   * Default: `5MB` (5 * 1024 * 1024)
    */
   chunkBytes?: number;
   /**
-   * Milliseconds to wait before retrying a failed chunk upload. Defaults to [1000, 2000, 4000, 8000].
+   * Milliseconds to wait before retrying a failed chunk upload.
    * Set to an empty array to disable retries.
+   *
+   * Default: `[1000, 2000, 4000, 8000]`
    */
   retryDelays?: number[];
   /**
@@ -79,6 +90,10 @@ export class ChunkUploader<TMetadata extends Metadata> {
 
   public get status() {
     return this._status;
+  }
+
+  public get bytesUploaded() {
+    return this._position;
   }
 
   /*************
