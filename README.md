@@ -32,9 +32,9 @@
 npm i nextjs-chunk-upload-action
 ```
 
-## 📖 Usage / Example
+## 📖 Example
 
-Demo Repository: [nextjs-chunk-upload-action-demo](https://github.com/a179346/nextjs-chunk-upload-action-demo)
+Example: [nextjs-chunk-upload-action-example](https://github.com/a179346/nextjs-chunk-upload-action-example)
 
 ```ts
 // upload-form.tsx
