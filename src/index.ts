@@ -23,7 +23,7 @@ export type ChunkUploadHandler<TMetadata extends Metadata = Metadata> = (
 export interface ChunkUploaderOptions<TMetadata extends Metadata> {
   file: File;
   /**
-   * The function that define how the chunk is uploaded to the server.
+   * The function that defines how the chunk is uploaded to the server.
    */
   onChunkUpload: ChunkUploadHandler<TMetadata>;
   /**
@@ -52,6 +52,9 @@ export interface ChunkUploaderOptions<TMetadata extends Metadata> {
   onError?: (error: unknown) => void;
   onPaused?: () => void;
   onAborted?: (metadata: TMetadata) => void;
+  /**
+   * A callback that is called when the status of the uploader changes.
+   */
   onStatusChange?: (
     oldStatus: ChunkUploaderStatus | undefined,
     newStatus: ChunkUploaderStatus
