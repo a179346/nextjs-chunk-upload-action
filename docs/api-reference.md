@@ -39,6 +39,8 @@ status: 'pending' | 'uploading' | 'pausing' | 'paused' | 'aborted' | 'complete' 
 
 The status of the uploader
 
+Reference: [How status changes](#how-status-changes)
+
 #### __bytesUploaded__ - `Accessor`
 
 ```ts
@@ -290,3 +292,9 @@ interface ChunkFormData {
 ```
 
 The form data that is sent with each chunk. This includes the chunk blob, the offset, the length, and other information.
+
+# Others
+
+## How [status](#status---accessor) changes
+
+![How status changes](../assets/how-status-changes.png)
