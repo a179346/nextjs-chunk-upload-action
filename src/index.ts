@@ -1,5 +1,11 @@
-/**
+/*!
+ * nextjs-chunk-upload-action
+ *
  * Uploading large files with chunking using server action in Next.js
+ *
+ * [GitHub]: https://github.com/a179346/nextjs-chunk-upload-action
+ * [npm]: https://www.npmjs.com/package/nextjs-chunk-upload-action
+ * [API Reference]: https://github.com/a179346/nextjs-chunk-upload-action/blob/main/docs/api-reference.md
  */
 
 export type Primitive = string | boolean | number | undefined | null;

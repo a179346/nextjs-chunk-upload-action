@@ -273,8 +273,8 @@ onStatusChange?: (oldStatus, newStatus) => void
 A callback that is called when the status of the uploader changes.
 
 - __Parameters__
-  - oldStatus: [ChunkUploaderStatus](#status) | `undefined`
-  - newStatus: [ChunkUploaderStatus](#status)
+  - oldStatus: [ChunkUploaderStatus](#status---accessor) | `undefined`
+  - newStatus: [ChunkUploaderStatus](#status---accessor)
 
 ## ChunkFormData
 
