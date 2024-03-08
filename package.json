@@ -1,6 +1,6 @@
 {
   "name": "nextjs-chunk-upload-action",
-  "version": "8.0.0",
+  "version": "8.1.0",
   "description": "Uploading large files with chunking using server action in Next.js",
   "main": "dist/index.js",
   "scripts": {

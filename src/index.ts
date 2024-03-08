@@ -8,10 +8,7 @@
  * [API Reference]: https://github.com/a179346/nextjs-chunk-upload-action/blob/main/docs/api-reference.md
  */
 
-export interface FileLike {
-  readonly size: number;
-  slice(start?: number, end?: number, contentType?: string): Blob;
-}
+export type FileLike = Pick<File, 'size' | 'slice'>;
 
 export type Primitive = string | boolean | number | undefined | null;
 
@@ -276,6 +273,8 @@ export class ChunkUploader<TMetadata extends Metadata> {
 
   protected _validateOptions(options: ChunkUploaderOptions<TMetadata>) {
     if (!options.file) throw new Error('File is required');
+    if (typeof options.file.size !== 'number') throw new Error('File size must be a number');
+    if (typeof options.file.slice !== 'function') throw new Error('File slice must be a function');
 
     if (typeof options.onChunkUpload !== 'function')
       throw new Error('onChunkUpload must be a function');
