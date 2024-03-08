@@ -8,6 +8,11 @@
  * [API Reference]: https://github.com/a179346/nextjs-chunk-upload-action/blob/main/docs/api-reference.md
  */
 
+export interface FileLike {
+  readonly size: number;
+  slice(start?: number, end?: number, contentType?: string): Blob;
+}
+
 export type Primitive = string | boolean | number | undefined | null;
 
 export type Metadata = Record<string, Primitive>;
@@ -27,7 +32,7 @@ export type ChunkUploadHandler<TMetadata extends Metadata = Metadata> = (
 ) => Promise<void>;
 
 export interface ChunkUploaderOptions<TMetadata extends Metadata> {
-  file: File;
+  file: FileLike;
   /**
    * The function that defines how the chunk is uploaded to the server.
    */
@@ -200,7 +205,7 @@ export class ChunkUploader<TMetadata extends Metadata> {
   protected _position: number;
   protected _error?: unknown;
 
-  protected readonly _file: File;
+  protected readonly _file: FileLike;
   protected readonly _onChunkUpload: ChunkUploadHandler<TMetadata>;
   protected readonly _chunkBytes: number;
   protected readonly _metadata: Readonly<TMetadata>;
@@ -271,7 +276,6 @@ export class ChunkUploader<TMetadata extends Metadata> {
 
   protected _validateOptions(options: ChunkUploaderOptions<TMetadata>) {
     if (!options.file) throw new Error('File is required');
-    if (!(options.file instanceof File)) throw new Error('File must be an instance of File');
 
     if (typeof options.onChunkUpload !== 'function')
       throw new Error('onChunkUpload must be a function');
