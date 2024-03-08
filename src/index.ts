@@ -8,7 +8,12 @@
  * [API Reference]: https://github.com/a179346/nextjs-chunk-upload-action/blob/main/docs/api-reference.md
  */
 
-export type FileLike = Pick<File, 'size' | 'slice'>;
+export type Promisable<T> = T | PromiseLike<T>;
+
+export interface FileLike {
+  readonly size: number;
+  slice(start?: number, end?: number, contentType?: string): Promisable<Blob>;
+}
 
 export type Primitive = string | boolean | number | undefined | null;
 
@@ -28,8 +33,8 @@ export type ChunkUploadHandler<TMetadata extends Metadata = Metadata> = (
   metadata: TMetadata
 ) => Promise<void>;
 
-export interface ChunkUploaderOptions<TMetadata extends Metadata> {
-  file: FileLike;
+export interface ChunkUploaderOptions<TMetadata extends Metadata, TFile extends FileLike> {
+  file: TFile;
   /**
    * The function that defines how the chunk is uploaded to the server.
    */
@@ -78,8 +83,8 @@ export type ChunkUploaderStatus =
   | 'complete'
   | 'error';
 
-export class ChunkUploader<TMetadata extends Metadata> {
-  constructor(options: ChunkUploaderOptions<TMetadata>) {
+export class ChunkUploader<TMetadata extends Metadata, TFile extends FileLike> {
+  constructor(options: ChunkUploaderOptions<TMetadata, TFile>) {
     this._validateOptions(options);
 
     this._status = 'pending';
@@ -202,7 +207,7 @@ export class ChunkUploader<TMetadata extends Metadata> {
   protected _position: number;
   protected _error?: unknown;
 
-  protected readonly _file: FileLike;
+  protected readonly _file: TFile;
   protected readonly _onChunkUpload: ChunkUploadHandler<TMetadata>;
   protected readonly _chunkBytes: number;
   protected readonly _metadata: Readonly<TMetadata>;
@@ -234,7 +239,7 @@ export class ChunkUploader<TMetadata extends Metadata> {
     const isLastChunk = this._position + this._chunkBytes >= this._file.size;
     const endPosition = isLastChunk ? this._file.size : this._position + this._chunkBytes;
 
-    const blob = this._file.slice(this._position, endPosition);
+    const blob = await this._file.slice(this._position, endPosition);
 
     for (let retry = 0; retry <= this._retryDelays.length; retry += 1) {
       try {
@@ -271,7 +276,7 @@ export class ChunkUploader<TMetadata extends Metadata> {
     return isLastChunk;
   }
 
-  protected _validateOptions(options: ChunkUploaderOptions<TMetadata>) {
+  protected _validateOptions(options: ChunkUploaderOptions<TMetadata, TFile>) {
     if (!options.file) throw new Error('File is required');
     if (typeof options.file.size !== 'number') throw new Error('File size must be a number');
     if (typeof options.file.slice !== 'function') throw new Error('File slice must be a function');
