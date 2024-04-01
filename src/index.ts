@@ -33,7 +33,7 @@ export type ChunkUploadHandler<TMetadata extends Metadata = Metadata> = (
   metadata: TMetadata
 ) => Promise<void>;
 
-export interface ChunkUploaderOptions<TMetadata extends Metadata, TFile extends FileLike> {
+export interface ChunkUploaderOptions<TMetadata extends Metadata, TFile extends FileLike = File> {
   file: TFile;
   /**
    * The function that defines how the chunk is uploaded to the server.
@@ -83,7 +83,7 @@ export type ChunkUploaderStatus =
   | 'complete'
   | 'error';
 
-export class ChunkUploader<TMetadata extends Metadata, TFile extends FileLike> {
+export class ChunkUploader<TMetadata extends Metadata, TFile extends FileLike = File> {
   constructor(options: ChunkUploaderOptions<TMetadata, TFile>) {
     this._validateOptions(options);
 
